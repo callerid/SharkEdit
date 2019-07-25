@@ -28,15 +28,15 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             this.dgvDisplay = new System.Windows.Forms.DataGridView();
-            this.btnLoadFile = new System.Windows.Forms.Button();
-            this.lbPackets = new System.Windows.Forms.Label();
             this.dgvDisplayColPacketCount = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.dgvDisplayColTimeStamp = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.dgvDisplayColLength = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.dgvDisplayColInterval = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.dgvDisplayColDelay = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.btnLoadFile = new System.Windows.Forms.Button();
+            this.lbPackets = new System.Windows.Forms.Label();
+            this.btnHalfSecondFix = new System.Windows.Forms.Button();
+            this.btnExport = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.dgvDisplay)).BeginInit();
             this.SuspendLayout();
             // 
@@ -48,15 +48,37 @@
             this.dgvDisplay.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.dgvDisplayColPacketCount,
             this.dgvDisplayColTimeStamp,
-            this.dgvDisplayColLength,
-            this.dgvDisplayColInterval,
-            this.dgvDisplayColDelay});
+            this.dgvDisplayColLength});
             this.dgvDisplay.Location = new System.Drawing.Point(12, 41);
             this.dgvDisplay.Name = "dgvDisplay";
             this.dgvDisplay.ReadOnly = true;
             this.dgvDisplay.RowHeadersVisible = false;
             this.dgvDisplay.Size = new System.Drawing.Size(489, 397);
             this.dgvDisplay.TabIndex = 0;
+            // 
+            // dgvDisplayColPacketCount
+            // 
+            this.dgvDisplayColPacketCount.HeaderText = "#";
+            this.dgvDisplayColPacketCount.Name = "dgvDisplayColPacketCount";
+            this.dgvDisplayColPacketCount.ReadOnly = true;
+            this.dgvDisplayColPacketCount.Width = 35;
+            // 
+            // dgvDisplayColTimeStamp
+            // 
+            dataGridViewCellStyle2.Format = "N0";
+            dataGridViewCellStyle2.NullValue = null;
+            this.dgvDisplayColTimeStamp.DefaultCellStyle = dataGridViewCellStyle2;
+            this.dgvDisplayColTimeStamp.HeaderText = "Timestamp";
+            this.dgvDisplayColTimeStamp.Name = "dgvDisplayColTimeStamp";
+            this.dgvDisplayColTimeStamp.ReadOnly = true;
+            this.dgvDisplayColTimeStamp.Width = 175;
+            // 
+            // dgvDisplayColLength
+            // 
+            this.dgvDisplayColLength.HeaderText = "Length";
+            this.dgvDisplayColLength.Name = "dgvDisplayColLength";
+            this.dgvDisplayColLength.ReadOnly = true;
+            this.dgvDisplayColLength.Width = 55;
             // 
             // btnLoadFile
             // 
@@ -71,56 +93,44 @@
             // lbPackets
             // 
             this.lbPackets.AutoSize = true;
-            this.lbPackets.Location = new System.Drawing.Point(390, 444);
+            this.lbPackets.Location = new System.Drawing.Point(389, 449);
             this.lbPackets.Name = "lbPackets";
             this.lbPackets.Size = new System.Drawing.Size(58, 13);
             this.lbPackets.TabIndex = 2;
             this.lbPackets.Text = "Packets: 0";
             // 
-            // dgvDisplayColPacketCount
+            // btnHalfSecondFix
             // 
-            this.dgvDisplayColPacketCount.HeaderText = "#";
-            this.dgvDisplayColPacketCount.Name = "dgvDisplayColPacketCount";
-            this.dgvDisplayColPacketCount.ReadOnly = true;
-            this.dgvDisplayColPacketCount.Width = 35;
+            this.btnHalfSecondFix.Location = new System.Drawing.Point(406, 12);
+            this.btnHalfSecondFix.Name = "btnHalfSecondFix";
+            this.btnHalfSecondFix.Size = new System.Drawing.Size(95, 23);
+            this.btnHalfSecondFix.TabIndex = 3;
+            this.btnHalfSecondFix.Text = "0.5 second fix";
+            this.btnHalfSecondFix.UseVisualStyleBackColor = true;
+            this.btnHalfSecondFix.Click += new System.EventHandler(this.btnHalfSecondFix_Click);
             // 
-            // dgvDisplayColTimeStamp
+            // btnExport
             // 
-            dataGridViewCellStyle1.Format = "N0";
-            dataGridViewCellStyle1.NullValue = null;
-            this.dgvDisplayColTimeStamp.DefaultCellStyle = dataGridViewCellStyle1;
-            this.dgvDisplayColTimeStamp.HeaderText = "Timestamp";
-            this.dgvDisplayColTimeStamp.Name = "dgvDisplayColTimeStamp";
-            this.dgvDisplayColTimeStamp.ReadOnly = true;
-            // 
-            // dgvDisplayColLength
-            // 
-            this.dgvDisplayColLength.HeaderText = "Length";
-            this.dgvDisplayColLength.Name = "dgvDisplayColLength";
-            this.dgvDisplayColLength.ReadOnly = true;
-            this.dgvDisplayColLength.Width = 55;
-            // 
-            // dgvDisplayColInterval
-            // 
-            this.dgvDisplayColInterval.HeaderText = "Interval";
-            this.dgvDisplayColInterval.Name = "dgvDisplayColInterval";
-            this.dgvDisplayColInterval.ReadOnly = true;
-            // 
-            // dgvDisplayColDelay
-            // 
-            this.dgvDisplayColDelay.HeaderText = "Delay After Packet";
-            this.dgvDisplayColDelay.Name = "dgvDisplayColDelay";
-            this.dgvDisplayColDelay.ReadOnly = true;
+            this.btnExport.Location = new System.Drawing.Point(12, 444);
+            this.btnExport.Name = "btnExport";
+            this.btnExport.Size = new System.Drawing.Size(95, 23);
+            this.btnExport.TabIndex = 4;
+            this.btnExport.Text = "Export";
+            this.btnExport.UseVisualStyleBackColor = true;
+            this.btnExport.Click += new System.EventHandler(this.btnExport_Click);
             // 
             // FrmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(513, 466);
+            this.ClientSize = new System.Drawing.Size(513, 481);
+            this.Controls.Add(this.btnExport);
+            this.Controls.Add(this.btnHalfSecondFix);
             this.Controls.Add(this.lbPackets);
             this.Controls.Add(this.btnLoadFile);
             this.Controls.Add(this.dgvDisplay);
             this.Name = "FrmMain";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "SharkEdit";
             ((System.ComponentModel.ISupportInitialize)(this.dgvDisplay)).EndInit();
             this.ResumeLayout(false);
@@ -136,8 +146,8 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn dgvDisplayColPacketCount;
         private System.Windows.Forms.DataGridViewTextBoxColumn dgvDisplayColTimeStamp;
         private System.Windows.Forms.DataGridViewTextBoxColumn dgvDisplayColLength;
-        private System.Windows.Forms.DataGridViewTextBoxColumn dgvDisplayColInterval;
-        private System.Windows.Forms.DataGridViewTextBoxColumn dgvDisplayColDelay;
+        private System.Windows.Forms.Button btnHalfSecondFix;
+        private System.Windows.Forms.Button btnExport;
     }
 }
 

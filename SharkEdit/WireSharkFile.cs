@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,10 +15,14 @@ namespace SharkEdit
 
         // All packets keeper
         public List<byte[]> Packets = new List<byte[]>();
+        private byte[] GlobalHeader;
         
         // Constuctor
-        public WireSharkFile(byte[] file_contents)
+        public WireSharkFile(byte[] file_contents, byte[] global_header)
         {
+
+            GlobalHeader = global_header;
+
             // Loop through all packets and pull them out
             // and put into packets
             int bytes_left = file_contents.Length;
@@ -34,8 +39,25 @@ namespace SharkEdit
                 int packet_length = BitConverter.ToInt32(length_bytes, 0);
 
                 // Capture packet for altering later
-                byte[] full_packet = new byte[packet_length];
-                for (int i = 0; i < packet_length; i++)
+                byte[] full_packet = new byte[packet_length + 16];
+                full_packet[0] = file_contents[0];
+                full_packet[1] = file_contents[1];
+                full_packet[2] = file_contents[2];
+                full_packet[3] = file_contents[3];
+                full_packet[4] = file_contents[4];
+                full_packet[5] = file_contents[5];
+                full_packet[6] = file_contents[6];
+                full_packet[7] = file_contents[7];
+                full_packet[8] = file_contents[8];
+                full_packet[9] = file_contents[9];
+                full_packet[10] = file_contents[10];
+                full_packet[11] = file_contents[11];
+                full_packet[12] = file_contents[12];
+                full_packet[13] = file_contents[13];
+                full_packet[14] = file_contents[14];
+                full_packet[15] = file_contents[15];
+
+                for (int i = 16; i < packet_length + 16; i++)
                 {
                     full_packet[i] = file_contents[i];
                 }
@@ -103,6 +125,70 @@ namespace SharkEdit
 
             return new int[] { timestamp_seconds, u_timestamp_seconds };
 
+        }
+
+        // Set both timestamps
+        public bool SetPacketTimestamp(int packet_index, byte[] timestamp, byte[] u_timestamp)
+        {
+            if (timestamp.Length < 4 || u_timestamp.Length < 4) return false;
+
+            // Create temp packet to read timestamp from
+            byte[] file_contents = GetPacket(packet_index);
+
+            file_contents[3] = timestamp[3];
+            file_contents[2] = timestamp[2];
+            file_contents[1] = timestamp[1];
+            file_contents[0] = timestamp[0];
+
+            file_contents[7] = u_timestamp[3];
+            file_contents[6] = u_timestamp[2];
+            file_contents[5] = u_timestamp[1];
+            file_contents[4] = u_timestamp[0];
+
+            Packets[packet_index] = file_contents;
+
+            return true;
+
+        }
+
+        // Export
+        public bool WriteFile(string file_name)
+        {
+
+            int total_length = GlobalHeader.Length;
+            foreach(byte[] packet in Packets)
+            {
+                total_length += packet.Length;
+            }
+
+            byte[] output = new byte[total_length];
+            int output_index = 0;
+
+            foreach(byte b in GlobalHeader)
+            {
+                output[output_index] = b;
+                output_index++;
+            }
+
+            foreach(byte[] packet in Packets)
+            {
+                foreach (byte b in packet)
+                {
+                    output[output_index] = b;
+                    output_index++;
+                }
+            }
+
+            try
+            {
+                File.WriteAllBytes(file_name, output);
+            }
+            catch
+            {
+                return false;
+            }
+
+            return true;
         }
 
     }

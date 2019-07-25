@@ -29,8 +29,6 @@ namespace SharkEdit
         private const int DGV_DISPLAY_COUNT = 0;
         private const int DGV_DISPLAY_TIMESTAMP = 1;
         private const int DGV_DISPLAY_LENGTH = 2;
-        private const int DGV_DISPLAY_INTERVAL = 3;
-        private const int DGV_DISPLAY_DELAY_AFTER = 4;
 
 
         // Form start
@@ -65,9 +63,6 @@ namespace SharkEdit
             // No longer first load
             FirstLoad = false;
 
-            // Clear all old values
-            dgvDisplay.Rows.Clear();
-
             // Clear buffers (precaution, they should be 
             // cleared when loaded anyway
             CurrentFileContents = new byte[1];
@@ -95,11 +90,28 @@ namespace SharkEdit
                 file_contents[i] = CurrentFileContents[i + 24];
             }
 
+            byte[] g_header = new byte[24];
+            for(int i = 0; i < 24; i++)
+            {
+                g_header[i] = CurrentFileContents[i];
+            }
+
             // Create wireshark file object keeper
-            WireSharkPackets = new WireSharkFile(file_contents);
+            WireSharkPackets = new WireSharkFile(file_contents, g_header);
+
+            // Update GUI
+            RefreshDisplay();
+
+        }
+
+        // Update GUI
+        public void RefreshDisplay()
+        {
+            // Clear all old values
+            dgvDisplay.Rows.Clear();
 
             // Populate display
-            for(int i = 0; i < WireSharkPackets.GetPacketsCount(); i++)
+            for (int i = 0; i < WireSharkPackets.GetPacketsCount(); i++)
             {
                 // Update display
                 dgvDisplay.Rows.Add();
@@ -111,10 +123,59 @@ namespace SharkEdit
                 int packet_length = WireSharkPackets.GetPacketLength(i);
                 dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_LENGTH].Value = packet_length;
 
-            }            
+            }
 
             lbPackets.Text = "Packets: " + WireSharkPackets.GetPacketsCount();
+        }
 
+        private void btnHalfSecondFix_Click(object sender, EventArgs e)
+        {
+            if (WireSharkPackets == null) return;
+            int timestamp = 0;
+            long u_timestamp = 0;
+            for(int i = 0; i < WireSharkPackets.GetPacketsCount(); i++)
+            {
+                byte[] timestamp_bytes = new byte[4];
+                byte[] u_timestamp_bytes = new byte[4];
+
+                // Convert timestamps to byte arrays
+                timestamp_bytes = BitConverter.GetBytes(timestamp);
+                u_timestamp_bytes = BitConverter.GetBytes(u_timestamp);
+
+                // Set new values
+                WireSharkPackets.SetPacketTimestamp(i, timestamp_bytes, u_timestamp_bytes);
+
+                // Increase by half a second
+                if (u_timestamp < 500000)
+                {
+                    u_timestamp += 500000;
+                }
+                else
+                {
+                    u_timestamp = 0;
+                    timestamp++;
+                }
+            }
+
+            RefreshDisplay();
+        }
+
+        private void btnExport_Click(object sender, EventArgs e)
+        {
+            SaveFileDialog save_dialog = new SaveFileDialog();
+            save_dialog.Filter = "Cap Files|*.cap";
+            if(save_dialog.ShowDialog()== DialogResult.OK)
+            {
+                if (WireSharkPackets.WriteFile(save_dialog.FileName))
+                {
+                    MessageBox.Show("Exported.");
+                }
+                else
+                {
+                    MessageBox.Show("Error while exporting. Please retry.");
+                }
+
+            }
         }
     }
 }
