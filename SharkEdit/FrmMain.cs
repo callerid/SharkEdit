@@ -19,12 +19,12 @@ namespace SharkEdit
         // Buffer for Loaded File (post-changes)
         public byte[] FileContents;
 
+        // Wireshark object for processing and saving
+        private WireSharkFile WireSharkPackets;
+
         // Keep track of first loaded file
         private bool FirstLoad = true;
-
-        // Contants
-        private const int HEADER_SIZE = 16;
-
+        
         // DDV constants
         private const int DGV_DISPLAY_COUNT = 0;
         private const int DGV_DISPLAY_TIMESTAMP = 1;
@@ -94,49 +94,26 @@ namespace SharkEdit
             {
                 file_contents[i] = CurrentFileContents[i + 24];
             }
-            
-            // Prepare for packet separation
-            List<byte[]> Packets = new List<byte[]>();
 
-            // Loop through all packets and pull them out
-            int bytes_left = file_contents.Length;
-            int packet_count = 1;
-            while (bytes_left > 1)
+            // Create wireshark file object keeper
+            WireSharkPackets = new WireSharkFile(file_contents);
+
+            // Populate display
+            for(int i = 0; i < WireSharkPackets.GetPacketsCount(); i++)
             {
-                // Header Total Length = 16 bytes
-                // Header[0]-[3] => Time Stamps
-                // Header[4]-[7] => Time Intervals
-                // Header[8]-[11] => Length of Packet
-                // Header[12]-[15] => Length of Packet (again)
-
-                // Get length of the packet
-                byte[] length_bytes = new byte[4] { file_contents[8], file_contents[9] , file_contents[10], file_contents[11] };
-                int packet_length = BitConverter.ToInt32(length_bytes, 0);
-
-                // Update counter to watch of end of file
-                bytes_left = file_contents.Length - (packet_length + HEADER_SIZE);
-
-                // Refresh contents to stay up-to-date with loop
-                byte[] buffer = new byte[bytes_left];
-                for(int i = 0; i < bytes_left; i++)
-                { 
-                    buffer[i] = file_contents[i + packet_length + HEADER_SIZE];
-                }
-                file_contents = new byte[bytes_left];
-                buffer.CopyTo(file_contents, 0);
-
                 // Update display
                 dgvDisplay.Rows.Add();
-                dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_COUNT].Value = packet_count;
+                dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_COUNT].Value = i + 1;
+
+                int[] timestamps = WireSharkPackets.GetPacketTimestamp(i);
+                dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_TIMESTAMP].Value = timestamps[0] + "." + timestamps[1];
+
+                int packet_length = WireSharkPackets.GetPacketLength(i);
                 dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_LENGTH].Value = packet_length;
-                dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_DELAY_AFTER].Value = "";
 
-                // Count packets
-                if(bytes_left > 1) packet_count++;
+            }            
 
-            }
-
-            lbPackets.Text = "Packets: " + packet_count;
+            lbPackets.Text = "Packets: " + WireSharkPackets.GetPacketsCount();
 
         }
     }

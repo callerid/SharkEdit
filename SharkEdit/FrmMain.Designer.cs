@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
             this.dgvDisplay = new System.Windows.Forms.DataGridView();
             this.btnLoadFile = new System.Windows.Forms.Button();
             this.lbPackets = new System.Windows.Forms.Label();
@@ -85,6 +86,9 @@
             // 
             // dgvDisplayColTimeStamp
             // 
+            dataGridViewCellStyle1.Format = "N0";
+            dataGridViewCellStyle1.NullValue = null;
+            this.dgvDisplayColTimeStamp.DefaultCellStyle = dataGridViewCellStyle1;
             this.dgvDisplayColTimeStamp.HeaderText = "Timestamp";
             this.dgvDisplayColTimeStamp.Name = "dgvDisplayColTimeStamp";
             this.dgvDisplayColTimeStamp.ReadOnly = true;
