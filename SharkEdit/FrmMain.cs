@@ -22,6 +22,17 @@ namespace SharkEdit
         // Keep track of first loaded file
         private bool FirstLoad = true;
 
+        // Contants
+        private const int HEADER_SIZE = 16;
+
+        // DDV constants
+        private const int DGV_DISPLAY_COUNT = 0;
+        private const int DGV_DISPLAY_TIMESTAMP = 1;
+        private const int DGV_DISPLAY_LENGTH = 2;
+        private const int DGV_DISPLAY_INTERVAL = 3;
+        private const int DGV_DISPLAY_DELAY_AFTER = 4;
+
+
         // Form start
         public FrmMain()
         {
@@ -66,27 +77,66 @@ namespace SharkEdit
             CurrentFileContents = File.ReadAllBytes(filename);
             FileContents = File.ReadAllBytes(filename);
 
-            ProcessFile(filename);
+            // Process File
+            ProcessFile();
 
         }
 
-        private void ProcessFile(string filename)
+        private void ProcessFile()
         {
 
-            // Break file into packets
+            // Make copy of current file for editing
+            // start at index 24 which will remove
+            // WireShark's global header since we only
+            // care about the packets
+            byte[] file_contents = new byte[CurrentFileContents.Length - 23];
+            for(int i = 0; i < CurrentFileContents.Length - 24; i++)
+            {
+                file_contents[i] = CurrentFileContents[i + 24];
+            }
+            
+            // Prepare for packet separation
             List<byte[]> Packets = new List<byte[]>();
 
-            // Loop through all packets
+            // Loop through all packets and pull them out
+            int bytes_left = file_contents.Length;
+            int packet_count = 1;
+            while (bytes_left > 1)
+            {
+                // Header Total Length = 16 bytes
+                // Header[0]-[3] => Time Stamps
+                // Header[4]-[7] => Time Intervals
+                // Header[8]-[11] => Length of Packet
+                // Header[12]-[15] => Length of Packet (again)
 
-            // Header Total Lenght = 15 bytes
+                // Get length of the packet
+                byte[] length_bytes = new byte[4] { file_contents[8], file_contents[9] , file_contents[10], file_contents[11] };
+                int packet_length = BitConverter.ToInt32(length_bytes, 0);
 
-            // Header[0]-[3] => Time Stamps
+                // Update counter to watch of end of file
+                bytes_left = file_contents.Length - (packet_length + HEADER_SIZE);
 
-            // Header[4]-[7] => Time Intervals
+                // Refresh contents to stay up-to-date with loop
+                byte[] buffer = new byte[bytes_left];
+                for(int i = 0; i < bytes_left; i++)
+                { 
+                    buffer[i] = file_contents[i + packet_length + HEADER_SIZE];
+                }
+                file_contents = new byte[bytes_left];
+                buffer.CopyTo(file_contents, 0);
 
-            // Header[8]-[11] => Length of Packet
+                // Update display
+                dgvDisplay.Rows.Add();
+                dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_COUNT].Value = packet_count;
+                dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_LENGTH].Value = packet_length;
+                dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_DELAY_AFTER].Value = "";
 
-            // Header[12]-[15] => Lenght of Packet (again)
+                // Count packets
+                if(bytes_left > 1) packet_count++;
+
+            }
+
+            lbPackets.Text = "Packets: " + packet_count;
 
         }
     }
