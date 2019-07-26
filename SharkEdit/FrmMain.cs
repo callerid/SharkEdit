@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -66,10 +67,10 @@ namespace SharkEdit
         {
             lbPackets.Text = "Reading File...";
             pbLoading.Value = 0;
-            Common.WaitFor(75);
+            WaitFor(75);
             byte[] full_wireshark_file = File.ReadAllBytes(filename);
             lbPackets.Text = "Processing...";
-            Common.WaitFor(75);
+            WaitFor(75);
 
             // Make copy of current file for editing
             // start at index 24 which will remove
@@ -99,7 +100,7 @@ namespace SharkEdit
 
             // Update GUI
             lbPackets.Text = "Displaying...";
-            Common.WaitFor(75);
+            WaitFor(75);
             RefreshDisplay();
 
         }
@@ -119,6 +120,12 @@ namespace SharkEdit
         {
             // Clear all old values
             dgvDisplay.Rows.Clear();
+
+            if (MessageBox.Show("Display?", "Update Display?", MessageBoxButtons.YesNo) == DialogResult.No)
+            {
+                pbLoading.Value = 0;
+                return;
+            }
 
             // Populate display
             pbLoading.Maximum = WireSharkPackets.GetPacketsCount();
@@ -140,14 +147,26 @@ namespace SharkEdit
             }
 
             lbPackets.Text = "Packets: " + WireSharkPackets.GetPacketsCount();
+            string runtime = dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_TIMESTAMP].Value.ToString();
+            lbTotalTime.Text = "Total Time: ~(" + int.Parse(runtime.Substring(0, runtime.IndexOf('.')))/60 + ") Mins <==> " + 
+                                runtime.Substring(0, runtime.IndexOf('.')) + " s and " + runtime.Substring(runtime.IndexOf('.') + 1) + " ms";
             pbLoading.Value = 0;
         }
 
-        private void btnHalfSecondFix_Click(object sender, EventArgs e)
+        private void AlterTimes(int milliseconds_between_sip, int rtp_divider)
         {
             if (WireSharkPackets == null) return;
+
+            // Correct for wireshark format
+            milliseconds_between_sip = milliseconds_between_sip * 1000;            
+
+            lbPackets.Text = "Altering times...";
+            WaitFor(75);
+
             int timestamp = 0;
             long u_timestamp = 0;
+            SetProgressBarMax(WireSharkPackets.GetPacketsCount());
+            int progress = 0;
             for(int i = 0; i < WireSharkPackets.GetPacketsCount(); i++)
             {
                 byte[] timestamp_bytes = new byte[4];
@@ -160,16 +179,28 @@ namespace SharkEdit
                 // Set new values
                 WireSharkPackets.SetPacketTimestamp(i, timestamp_bytes, u_timestamp_bytes);
 
-                // Increase by half a second
-                if (u_timestamp < 500000)
+                // Increase by given value
+                int increment_by = milliseconds_between_sip;
+                bool is_rtp = WireSharkPackets.IsRTP(i);
+
+                double r = milliseconds_between_sip / rtp_divider;
+                if (is_rtp) increment_by = (int)Math.Round(r);
+
+                // Increase next timestamp
+                u_timestamp += increment_by;
+                if (u_timestamp >= 1000000)
                 {
-                    u_timestamp += 500000;
+                    double remaining_seconds = u_timestamp / 1000000;
+                    int seconds = (int)Math.Round(remaining_seconds);
+                    timestamp+= seconds;
+
+                    float remaining_u_seconds = u_timestamp / 1000000;
+                    remaining_u_seconds = (float)GetPartialFromFloat(remaining_u_seconds) * 1000;
+                    u_timestamp = (long)Math.Round(remaining_u_seconds);
                 }
-                else
-                {
-                    u_timestamp = 0;
-                    timestamp++;
-                }
+
+                progress++;
+                UpdateProgressBar(progress);
             }
 
             RefreshDisplay();
@@ -190,7 +221,31 @@ namespace SharkEdit
                     MessageBox.Show("Error while exporting. Please retry.");
                 }
 
+                pbLoading.Value = 0;
+
             }
+        }
+
+        // Wait for x miliseconds
+        public static void WaitFor(int milliSeconds)
+        {
+            var sw = new Stopwatch();
+            sw.Start();
+            while (sw.ElapsedMilliseconds < milliSeconds)
+            {
+                Application.DoEvents();
+            }
+            sw.Stop();
+        }
+
+        public static decimal GetPartialFromFloat(float f)
+        {
+            return (decimal)(f - Math.Truncate(f));
+        }
+
+        private void btnHalfSecondFix_Click(object sender, EventArgs e)
+        {
+            AlterTimes(100, 50);
         }
     }
 }

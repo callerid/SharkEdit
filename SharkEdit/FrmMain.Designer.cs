@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FrmMain));
             this.dgvDisplay = new System.Windows.Forms.DataGridView();
             this.dgvDisplayColPacketCount = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.dgvDisplayColTimeStamp = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -38,6 +39,7 @@
             this.btnHalfSecondFix = new System.Windows.Forms.Button();
             this.btnExport = new System.Windows.Forms.Button();
             this.pbLoading = new System.Windows.Forms.ProgressBar();
+            this.lbTotalTime = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.dgvDisplay)).BeginInit();
             this.SuspendLayout();
             // 
@@ -127,17 +129,28 @@
             this.pbLoading.Size = new System.Drawing.Size(270, 23);
             this.pbLoading.TabIndex = 5;
             // 
+            // lbTotalTime
+            // 
+            this.lbTotalTime.AutoSize = true;
+            this.lbTotalTime.Location = new System.Drawing.Point(178, 479);
+            this.lbTotalTime.Name = "lbTotalTime";
+            this.lbTotalTime.Size = new System.Drawing.Size(132, 13);
+            this.lbTotalTime.TabIndex = 6;
+            this.lbTotalTime.Text = "Total Time: 00 Min 00 Sec";
+            // 
             // FrmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(513, 481);
+            this.ClientSize = new System.Drawing.Size(513, 501);
+            this.Controls.Add(this.lbTotalTime);
             this.Controls.Add(this.pbLoading);
             this.Controls.Add(this.btnExport);
             this.Controls.Add(this.btnHalfSecondFix);
             this.Controls.Add(this.lbPackets);
             this.Controls.Add(this.btnLoadFile);
             this.Controls.Add(this.dgvDisplay);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "FrmMain";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "SharkEdit";
@@ -158,6 +171,7 @@
         private System.Windows.Forms.Button btnHalfSecondFix;
         private System.Windows.Forms.Button btnExport;
         private System.Windows.Forms.ProgressBar pbLoading;
+        private System.Windows.Forms.Label lbTotalTime;
     }
 }
 

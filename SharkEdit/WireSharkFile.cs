@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SharkEdit
 {
@@ -59,6 +56,9 @@ namespace SharkEdit
 
                 int packet_length = BitConverter.ToInt32(length_bytes, 0);
 
+                // RTP checking
+                bool rtp = packet_length == 214 || packet_length == 218;
+                
                 // Fill header of this packet
                 byte[] full_packet = new byte[packet_length + 16];
                 full_packet[0] = FileContents[0 + offset];
@@ -83,8 +83,9 @@ namespace SharkEdit
                 {
                     full_packet[i] = FileContents[i + offset];
                 }
-                Packets.Add(full_packet);
 
+                Packets.Add(full_packet);
+                
                 // Update counter to watch of end of file
                 bytes_left -= (packet_length + HEADER_SIZE);
 
@@ -174,8 +175,9 @@ namespace SharkEdit
         // Export
         public bool WriteFile(string file_name)
         {
-
             int total_length = GlobalHeader.Length;
+            SetProgressBarMax(total_length);
+
             foreach(byte[] packet in Packets)
             {
                 total_length += packet.Length;
@@ -188,6 +190,7 @@ namespace SharkEdit
             {
                 output[output_index] = b;
                 output_index++;
+                UpdateProgressBar(output_index);
             }
 
             foreach(byte[] packet in Packets)
@@ -196,6 +199,7 @@ namespace SharkEdit
                 {
                     output[output_index] = b;
                     output_index++;
+                    UpdateProgressBar(output_index);
                 }
             }
 
@@ -209,6 +213,13 @@ namespace SharkEdit
             }
 
             return true;
+        }
+
+        // Is RTP
+        public bool IsRTP(int packet_index)
+        {
+            return GetPacketLength(packet_index) == 214 || GetPacketLength(packet_index)
+ == 218;
         }
 
     }
