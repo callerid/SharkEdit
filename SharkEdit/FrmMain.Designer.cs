@@ -28,7 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
             this.dgvDisplay = new System.Windows.Forms.DataGridView();
             this.dgvDisplayColPacketCount = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.dgvDisplayColTimeStamp = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -37,6 +37,7 @@
             this.lbPackets = new System.Windows.Forms.Label();
             this.btnHalfSecondFix = new System.Windows.Forms.Button();
             this.btnExport = new System.Windows.Forms.Button();
+            this.pbLoading = new System.Windows.Forms.ProgressBar();
             ((System.ComponentModel.ISupportInitialize)(this.dgvDisplay)).BeginInit();
             this.SuspendLayout();
             // 
@@ -65,9 +66,9 @@
             // 
             // dgvDisplayColTimeStamp
             // 
-            dataGridViewCellStyle2.Format = "N0";
-            dataGridViewCellStyle2.NullValue = null;
-            this.dgvDisplayColTimeStamp.DefaultCellStyle = dataGridViewCellStyle2;
+            dataGridViewCellStyle1.Format = "N0";
+            dataGridViewCellStyle1.NullValue = null;
+            this.dgvDisplayColTimeStamp.DefaultCellStyle = dataGridViewCellStyle1;
             this.dgvDisplayColTimeStamp.HeaderText = "Timestamp";
             this.dgvDisplayColTimeStamp.Name = "dgvDisplayColTimeStamp";
             this.dgvDisplayColTimeStamp.ReadOnly = true;
@@ -119,11 +120,19 @@
             this.btnExport.UseVisualStyleBackColor = true;
             this.btnExport.Click += new System.EventHandler(this.btnExport_Click);
             // 
+            // pbLoading
+            // 
+            this.pbLoading.Location = new System.Drawing.Point(113, 444);
+            this.pbLoading.Name = "pbLoading";
+            this.pbLoading.Size = new System.Drawing.Size(270, 23);
+            this.pbLoading.TabIndex = 5;
+            // 
             // FrmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(513, 481);
+            this.Controls.Add(this.pbLoading);
             this.Controls.Add(this.btnExport);
             this.Controls.Add(this.btnHalfSecondFix);
             this.Controls.Add(this.lbPackets);
@@ -148,6 +157,7 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn dgvDisplayColLength;
         private System.Windows.Forms.Button btnHalfSecondFix;
         private System.Windows.Forms.Button btnExport;
+        private System.Windows.Forms.ProgressBar pbLoading;
     }
 }
 

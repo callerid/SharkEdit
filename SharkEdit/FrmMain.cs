@@ -13,12 +13,6 @@ namespace SharkEdit
 {
     public partial class FrmMain : Form
     {
-        // Buffer for Loaded File (pre-changes)
-        public byte[] CurrentFileContents;
-
-        // Buffer for Loaded File (post-changes)
-        public byte[] FileContents;
-
         // Wireshark object for processing and saving
         private WireSharkFile WireSharkPackets;
 
@@ -63,45 +57,61 @@ namespace SharkEdit
             // No longer first load
             FirstLoad = false;
 
-            // Clear buffers (precaution, they should be 
-            // cleared when loaded anyway
-            CurrentFileContents = new byte[1];
-            FileContents = new byte[1];
-
-            // Erase old file and load new file
-            CurrentFileContents = File.ReadAllBytes(filename);
-            FileContents = File.ReadAllBytes(filename);
-
             // Process File
-            ProcessFile();
+            ProcessFile(filename);
 
         }
 
-        private void ProcessFile()
+        private void ProcessFile(string filename)
         {
+            lbPackets.Text = "Reading File...";
+            pbLoading.Value = 0;
+            Common.WaitFor(75);
+            byte[] full_wireshark_file = File.ReadAllBytes(filename);
+            lbPackets.Text = "Processing...";
+            Common.WaitFor(75);
 
             // Make copy of current file for editing
             // start at index 24 which will remove
             // WireShark's global header since we only
             // care about the packets
-            byte[] file_contents = new byte[CurrentFileContents.Length - 23];
-            for(int i = 0; i < CurrentFileContents.Length - 24; i++)
+            byte[] file_contents = new byte[full_wireshark_file.Length - 23];
+            for(int i = 0; i < full_wireshark_file.Length - 24; i++)
             {
-                file_contents[i] = CurrentFileContents[i + 24];
+                file_contents[i] = full_wireshark_file[i + 24];
             }
 
             byte[] g_header = new byte[24];
             for(int i = 0; i < 24; i++)
             {
-                g_header[i] = CurrentFileContents[i];
+                g_header[i] = full_wireshark_file[i];
             }
 
             // Create wireshark file object keeper
             WireSharkPackets = new WireSharkFile(file_contents, g_header);
 
+            // Connect updaters ( used for progress bars )
+            WireSharkPackets.SetProgressBarMax += new WireSharkFile.SetProgressBarMaxDelegate(SetProgressBarMax);
+            WireSharkPackets.UpdateProgressBar += new WireSharkFile.UpdateProgressBarDelegate(UpdateProgressBar);
+
+            // Get all lengths and timestamps (pre-process)
+            WireSharkPackets.Process();
+
             // Update GUI
+            lbPackets.Text = "Displaying...";
+            Common.WaitFor(75);
             RefreshDisplay();
 
+        }
+
+        private void SetProgressBarMax(int value)
+        {
+            pbLoading.Maximum = value;
+        }
+
+        private void UpdateProgressBar(int value)
+        {
+            if (value < pbLoading.Maximum) pbLoading.Value = value;
         }
 
         // Update GUI
@@ -111,6 +121,8 @@ namespace SharkEdit
             dgvDisplay.Rows.Clear();
 
             // Populate display
+            pbLoading.Maximum = WireSharkPackets.GetPacketsCount();
+            pbLoading.Value = 1;
             for (int i = 0; i < WireSharkPackets.GetPacketsCount(); i++)
             {
                 // Update display
@@ -123,9 +135,12 @@ namespace SharkEdit
                 int packet_length = WireSharkPackets.GetPacketLength(i);
                 dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_LENGTH].Value = packet_length;
 
+                if (pbLoading.Value < pbLoading.Maximum) pbLoading.Value++;
+
             }
 
             lbPackets.Text = "Packets: " + WireSharkPackets.GetPacketsCount();
+            pbLoading.Value = 0;
         }
 
         private void btnHalfSecondFix_Click(object sender, EventArgs e)

@@ -15,17 +15,36 @@ namespace SharkEdit
 
         // All packets keeper
         public List<byte[]> Packets = new List<byte[]>();
+        public byte[] FileContents;
         private byte[] GlobalHeader;
+
+        // Events
+        // -- Set progressbar max
+        public delegate void SetProgressBarMaxDelegate(int value);
+        public SetProgressBarMaxDelegate SetProgressBarMax;
+
+        // -- Update progressbar value
+        public delegate void UpdateProgressBarDelegate(int value);
+        public UpdateProgressBarDelegate UpdateProgressBar;
         
         // Constuctor
         public WireSharkFile(byte[] file_contents, byte[] global_header)
         {
-
+            FileContents = file_contents;
             GlobalHeader = global_header;
 
-            // Loop through all packets and pull them out
-            // and put into packets
-            int bytes_left = file_contents.Length;
+            Packets = new List<byte[]>();
+        }
+
+        // Pull out packets and place into packets list
+        public void Process()
+        {
+            int bytes_left = FileContents.Length;
+
+            SetProgressBarMax(bytes_left);
+
+            int offset = 0;
+            int progress = 0;
             while (bytes_left > 1)
             {
                 // Header Total Length = 16 bytes
@@ -35,52 +54,53 @@ namespace SharkEdit
                 // Header[12]-[15] => Length of Packet (actual)                
 
                 // Get length of the packet
-                byte[] length_bytes = new byte[4] { file_contents[12], file_contents[13], file_contents[14], file_contents[15] };
+                byte[] length_bytes = new byte[4] { FileContents[12 + offset], FileContents[13 + offset],
+                                                    FileContents[14 + offset], FileContents[15 + offset] };
+
                 int packet_length = BitConverter.ToInt32(length_bytes, 0);
 
-                // Capture packet for altering later
+                // Fill header of this packet
                 byte[] full_packet = new byte[packet_length + 16];
-                full_packet[0] = file_contents[0];
-                full_packet[1] = file_contents[1];
-                full_packet[2] = file_contents[2];
-                full_packet[3] = file_contents[3];
-                full_packet[4] = file_contents[4];
-                full_packet[5] = file_contents[5];
-                full_packet[6] = file_contents[6];
-                full_packet[7] = file_contents[7];
-                full_packet[8] = file_contents[8];
-                full_packet[9] = file_contents[9];
-                full_packet[10] = file_contents[10];
-                full_packet[11] = file_contents[11];
-                full_packet[12] = file_contents[12];
-                full_packet[13] = file_contents[13];
-                full_packet[14] = file_contents[14];
-                full_packet[15] = file_contents[15];
+                full_packet[0] = FileContents[0 + offset];
+                full_packet[1] = FileContents[1 + offset];
+                full_packet[2] = FileContents[2 + offset];
+                full_packet[3] = FileContents[3 + offset];
+                full_packet[4] = FileContents[4 + offset];
+                full_packet[5] = FileContents[5 + offset];
+                full_packet[6] = FileContents[6 + offset];
+                full_packet[7] = FileContents[7 + offset];
+                full_packet[8] = FileContents[8 + offset];
+                full_packet[9] = FileContents[9 + offset];
+                full_packet[10] = FileContents[10 + offset];
+                full_packet[11] = FileContents[11 + offset];
+                full_packet[12] = FileContents[12 + offset];
+                full_packet[13] = FileContents[13 + offset];
+                full_packet[14] = FileContents[14 + offset];
+                full_packet[15] = FileContents[15 + offset];
 
+                // Fill data of this packet, start after header
                 for (int i = 16; i < packet_length + 16; i++)
                 {
-                    full_packet[i] = file_contents[i];
+                    full_packet[i] = FileContents[i + offset];
                 }
                 Packets.Add(full_packet);
 
                 // Update counter to watch of end of file
-                bytes_left = file_contents.Length - (packet_length + HEADER_SIZE);
+                bytes_left -= (packet_length + HEADER_SIZE);
 
-                // Refresh contents to stay up-to-date with loop
-                byte[] buffer = new byte[bytes_left];
-                for (int i = 0; i < bytes_left; i++)
-                {
-                    buffer[i] = file_contents[i + packet_length + HEADER_SIZE];
-                }
-                file_contents = new byte[bytes_left];
-                buffer.CopyTo(file_contents, 0);
-                
+                // Update offset
+                offset += (packet_length + HEADER_SIZE);
+
+                // Update progress bar
+                progress += packet_length;
+                UpdateProgressBar(progress);
+
                 // Break out when finished
-                if (bytes_left < 2) break; 
+                if (bytes_left < 2) break;
 
             }
         }
-
+        
         // Packet count
         public int GetPacketsCount()
         {
