@@ -24,6 +24,7 @@ namespace SharkEdit
         private const int DGV_DISPLAY_COUNT = 0;
         private const int DGV_DISPLAY_TIMESTAMP = 1;
         private const int DGV_DISPLAY_LENGTH = 2;
+        private const int DGV_DISPLAY_SIP_TYPE = 3;
 
 
         // Form start
@@ -96,7 +97,7 @@ namespace SharkEdit
             WireSharkPackets.UpdateProgressBar += new WireSharkFile.UpdateProgressBarDelegate(UpdateProgressBar);
 
             // Get all lengths and timestamps (pre-process)
-            WireSharkPackets.Process();
+            WireSharkPackets.Process(true, true, true, true);
 
             // Update GUI
             lbPackets.Text = "Displaying...";
@@ -141,6 +142,8 @@ namespace SharkEdit
 
                 int packet_length = WireSharkPackets.GetPacketLength(i);
                 dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_LENGTH].Value = packet_length;
+
+                dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_SIP_TYPE].Value = WireSharkPackets.GetSIPString(i);
 
                 if (pbLoading.Value < pbLoading.Maximum) pbLoading.Value++;
 
