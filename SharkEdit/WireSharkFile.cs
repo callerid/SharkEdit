@@ -39,7 +39,8 @@ namespace SharkEdit
         public void Process(bool filter_out_registers = false, 
                             bool filter_out_200_oks = false,
                             bool filter_out_options = false,
-                            bool filter_out_notifys = false)
+                            bool filter_out_notifys = false,
+                            bool filter_out_all_RTP = false)
         {
             int bytes_left = FileContents.Length;
 
@@ -47,6 +48,8 @@ namespace SharkEdit
 
             int offset = 0;
             int progress = 0;
+            int rtp_count = 0;
+            bool first_packet = true;
             while (bytes_left > 1)
             {
                 // Header Total Length = 16 bytes
@@ -81,51 +84,87 @@ namespace SharkEdit
                 if (packet_ascii.IndexOf("CSeq:") > -1)
                 {
                     sequence_pos = packet_ascii.IndexOf("CSeq");
-                    seq_method = packet_ascii.Substring(sequence_pos, 20);
+                    seq_method = packet_ascii.Substring(sequence_pos, packet_length > sequence_pos + 20 ? 20 : packet_length - sequence_pos);
                 }
 
+                string full_ship_method = GetSIPFromString(sip_type);
+
+                // Type of packet
+                string type_piece = packet_ascii.Substring(66 - (first_packet ? 8 : 0), packet_length > 66 + 20 ? 20 : packet_length - 66);
+                first_packet = false;
+                bool is_sip = !GetSIPFromString(type_piece).Contains("err:") || !(GetSIPFromString(sip_type).Contains("err:"));
+                bool rtp = packet_length == 214 || packet_length == 218 || packet_length == 60;
+
+                // Filter out anything that's not a SIP record or an RTP packet
+                if (!is_sip && !rtp) filter_this_packet = true;
+
                 // If register packet then filter
-                if (filter_out_registers && GetSIPFromString(sip_type) == "Register") filter_this_packet = true;
-                if (filter_out_notifys && GetSIPFromString(sip_type) == "Notify") filter_this_packet = true;
+                if (filter_out_registers && full_ship_method == "Register") filter_this_packet = true;
+                if (filter_out_notifys && full_ship_method == "Notify") filter_this_packet = true;
 
                 // If 200 OK's then filter if not seq to an invite
-                if (filter_out_200_oks && GetSIPFromString(sip_type) == "200 OK" && (!seq_method.Contains("INVITE") && !seq_method.Contains("BYE") && !seq_method.Contains("CANCEL"))) filter_this_packet = true;
-                if (filter_out_options && GetSIPFromString(sip_type) == "Options" && (!seq_method.Contains("INVITE") && !seq_method.Contains("BYE") && !seq_method.Contains("CANCEL"))) filter_this_packet = true;
+                if (filter_out_200_oks && full_ship_method == "200 OK" && (!seq_method.Contains("INVITE") && !seq_method.Contains("BYE") && !seq_method.Contains("CANCEL"))) filter_this_packet = true;
+                if (filter_out_options && full_ship_method == "Options" && (!seq_method.Contains("INVITE") && !seq_method.Contains("BYE") && !seq_method.Contains("CANCEL"))) filter_this_packet = true;
 
-                // RTP checking
-                bool rtp = packet_length == 214 || packet_length == 218;
+                // Check RTP filtering
+                if (rtp && filter_out_all_RTP) filter_this_packet = true;
                 
                 if (!filter_this_packet)
                 {
-                    // Fill header of this packet
-                    byte[] full_packet = new byte[packet_length + 16];
-                    full_packet[0] = FileContents[0 + offset];
-                    full_packet[1] = FileContents[1 + offset];
-                    full_packet[2] = FileContents[2 + offset];
-                    full_packet[3] = FileContents[3 + offset];
-                    full_packet[4] = FileContents[4 + offset];
-                    full_packet[5] = FileContents[5 + offset];
-                    full_packet[6] = FileContents[6 + offset];
-                    full_packet[7] = FileContents[7 + offset];
-                    full_packet[8] = FileContents[8 + offset];
-                    full_packet[9] = FileContents[9 + offset];
-                    full_packet[10] = FileContents[10 + offset];
-                    full_packet[11] = FileContents[11 + offset];
-                    full_packet[12] = FileContents[12 + offset];
-                    full_packet[13] = FileContents[13 + offset];
-                    full_packet[14] = FileContents[14 + offset];
-                    full_packet[15] = FileContents[15 + offset];
-
-                    // Fill data of this packet, start after header
-                    for (int i = 16; i < packet_length + 16; i++)
+                    // One out of every 25 rtps
+                    bool skip_packet = false;
+                    if (rtp)
                     {
-                        full_packet[i] = FileContents[i + offset];
+                        if (rtp_count < 25) rtp_count++;
+                        
+                        if(rtp_count == 1)
+                        {
+                            skip_packet = false;
+                        }
+                        else if (rtp_count != 25)
+                        {
+                            skip_packet = true;
+                        }
+                        else
+                        {
+                            skip_packet = false;
+                            rtp_count = 1;
+                        }
                     }
 
-                    Packets.Add(full_packet);
-                    SIPTypes.Add(GetSIPFromString(sip_type));
-                }
-                
+                    if (!skip_packet)
+                    {
+
+                        // Fill header of this packet
+                        byte[] full_packet = new byte[packet_length + 16];
+                        full_packet[0] = FileContents[0 + offset];
+                        full_packet[1] = FileContents[1 + offset];
+                        full_packet[2] = FileContents[2 + offset];
+                        full_packet[3] = FileContents[3 + offset];
+                        full_packet[4] = FileContents[4 + offset];
+                        full_packet[5] = FileContents[5 + offset];
+                        full_packet[6] = FileContents[6 + offset];
+                        full_packet[7] = FileContents[7 + offset];
+                        full_packet[8] = FileContents[8 + offset];
+                        full_packet[9] = FileContents[9 + offset];
+                        full_packet[10] = FileContents[10 + offset];
+                        full_packet[11] = FileContents[11 + offset];
+                        full_packet[12] = FileContents[12 + offset];
+                        full_packet[13] = FileContents[13 + offset];
+                        full_packet[14] = FileContents[14 + offset];
+                        full_packet[15] = FileContents[15 + offset];
+
+                        // Fill data of this packet, start after header
+                        for (int i = 16; i < packet_length + 16; i++)
+                        {
+                            full_packet[i] = FileContents[i + offset];
+                        }
+
+                        Packets.Add(full_packet);
+                        SIPTypes.Add(rtp ? "RTP" : GetSIPFromString(sip_type));
+
+                    }
+                }                
                 
                 // Update counter to watch of end of file
                 bytes_left -= (packet_length + HEADER_SIZE);
@@ -269,7 +308,9 @@ namespace SharkEdit
             if (piece.Contains("OPT")) return "Options";
             if (piece.Contains("CANCEL")) return "Cancel";
             if (piece.Contains("NOTIFY")) return "Notify";
-            return piece;
+            if (piece.Contains("Unauthor")) return "401 Unauthorized";
+            if (piece.Contains("SIP/2.0")) return "Unknown SIP";
+            return "err:" + piece;
         }
 
         // Get SIP type from packets

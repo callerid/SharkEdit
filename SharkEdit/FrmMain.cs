@@ -18,7 +18,7 @@ namespace SharkEdit
         private WireSharkFile WireSharkPackets;
 
         // Keep track of first loaded file
-        private bool FirstLoad = true;
+        private bool TimesAltered = false;
         
         // DDV constants
         private const int DGV_DISPLAY_COUNT = 0;
@@ -37,6 +37,17 @@ namespace SharkEdit
         // Click of load file button
         private void btnLoadFile_Click(object sender, EventArgs e)
         {
+
+            // Display message to make sure user wants to clear
+            // all old data and re-load file
+            if (TimesAltered)
+            {
+                if (MessageBox.Show("Export Existing File Created?", "Export File?", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                {
+                    btnExport_Click(new object(), new EventArgs());
+                }
+            }
+
             // Create and show dialog to get filepath for 
             // desired file
             OpenFileDialog file_dialog = new OpenFileDialog();
@@ -44,20 +55,15 @@ namespace SharkEdit
             file_dialog.ShowDialog();
 
             // Load file then process
-            LoadFile(file_dialog.FileName, FirstLoad ? false : true);
+            if (string.IsNullOrEmpty(file_dialog.FileName)) return;
+            LoadFile(file_dialog.FileName);
+            btnHalfSecondFix.Enabled = true;
         }
 
-        private void LoadFile(string filename, bool confirm_message)
+        private void LoadFile(string filename)
         {
-            // Display message to make sure user wants to clear
-            // all old data and re-load file
-            if (confirm_message)
-            {
-                if (MessageBox.Show("Are you sure you wish to clear all unsaved changes?", "Re-load New File?", MessageBoxButtons.YesNo) == DialogResult.No) return;
-            }
-
-            // No longer first load
-            FirstLoad = false;
+            Text = "Shark Biting: " + filename;
+            lbFilename.Text = filename;
 
             // Process File
             ProcessFile(filename);
@@ -97,7 +103,7 @@ namespace SharkEdit
             WireSharkPackets.UpdateProgressBar += new WireSharkFile.UpdateProgressBarDelegate(UpdateProgressBar);
 
             // Get all lengths and timestamps (pre-process)
-            WireSharkPackets.Process(true, true, true, true);
+            WireSharkPackets.Process(ckbREG.Checked, ckbOK.Checked, ckbOPT.Checked, ckbNOT.Checked, ckbRTP.Checked);
 
             // Update GUI
             lbPackets.Text = "Displaying...";
@@ -121,16 +127,10 @@ namespace SharkEdit
         {
             // Clear all old values
             dgvDisplay.Rows.Clear();
-
-            if (MessageBox.Show("Display?", "Update Display?", MessageBoxButtons.YesNo) == DialogResult.No)
-            {
-                pbLoading.Value = 0;
-                return;
-            }
-
+            
             // Populate display
             pbLoading.Maximum = WireSharkPackets.GetPacketsCount();
-            pbLoading.Value = 1;
+            if (pbLoading.Maximum > 0) pbLoading.Value = 1;
             for (int i = 0; i < WireSharkPackets.GetPacketsCount(); i++)
             {
                 // Update display
@@ -150,9 +150,6 @@ namespace SharkEdit
             }
 
             lbPackets.Text = "Packets: " + WireSharkPackets.GetPacketsCount();
-            string runtime = dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_TIMESTAMP].Value.ToString();
-            lbTotalTime.Text = "Total Time: ~(" + int.Parse(runtime.Substring(0, runtime.IndexOf('.')))/60 + ") Mins <==> " + 
-                                runtime.Substring(0, runtime.IndexOf('.')) + " s and " + runtime.Substring(runtime.IndexOf('.') + 1) + " ms";
             pbLoading.Value = 0;
         }
 
@@ -218,13 +215,23 @@ namespace SharkEdit
                 if (WireSharkPackets.WriteFile(save_dialog.FileName))
                 {
                     MessageBox.Show("Exported.");
+                    btnExport.Enabled = false;
+                    btnHalfSecondFix.Enabled = false;
+                    TimesAltered = false;
+
+                    ckbNOT.Enabled = true;
+                    ckbOK.Enabled = true;
+                    ckbOPT.Enabled = true;
+                    ckbREG.Enabled = true;
+                    ckbRTP.Enabled = true;
+
                 }
                 else
                 {
                     MessageBox.Show("Error while exporting. Please retry.");
                 }
 
-                pbLoading.Value = 0;
+                pbLoading.Value = 0;                
 
             }
         }
@@ -248,7 +255,22 @@ namespace SharkEdit
 
         private void btnHalfSecondFix_Click(object sender, EventArgs e)
         {
-            AlterTimes(100, 50);
+            AlterTimes((int)ndMSBetweenSIP.Value, (int)ndMSBR.Value);
+            TimesAltered = true;
+            btnExport.Enabled = true;
+
+            ckbNOT.Enabled = false;
+            ckbOK.Enabled = false;
+            ckbOPT.Enabled = false;
+            ckbREG.Enabled = false;
+            ckbRTP.Enabled = false;
+        }
+
+        private void ckbRTP_CheckedChanged(object sender, EventArgs e)
+        {
+            ndMSBR.Enabled = !ckbRTP.Checked;
+            lbRTP.Enabled = !ckbRTP.Checked;
+
         }
     }
 }
