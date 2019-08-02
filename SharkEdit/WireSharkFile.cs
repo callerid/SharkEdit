@@ -16,6 +16,7 @@ namespace SharkEdit
         public List<string> SIPTypes = new List<string>();
         public byte[] FileContents;
         private byte[] GlobalHeader;
+        private decimal StartTimeStamp = -1;
 
         // Events
         // -- Set progressbar max
@@ -36,10 +37,8 @@ namespace SharkEdit
         }
 
         // Pull out packets and place into packets list
-        public void Process(bool filter_out_registers = false, 
-                            bool filter_out_200_oks = false,
+        public void Process(bool filter_out_non_essentials = false,
                             bool filter_out_options = false,
-                            bool filter_out_notifys = false,
                             bool filter_out_all_RTP = false)
         {
             int bytes_left = FileContents.Length;
@@ -50,6 +49,7 @@ namespace SharkEdit
             int progress = 0;
             int rtp_count = 0;
             bool first_packet = true;
+            int packet = 1;
             while (bytes_left > 1)
             {
                 // Header Total Length = 16 bytes
@@ -64,12 +64,26 @@ namespace SharkEdit
 
                 int packet_length = BitConverter.ToInt32(length_bytes, 0);
 
+                if (StartTimeStamp == -1)
+                {
+                    byte[] timestamp_bytes = new byte[4] { FileContents[0], FileContents[1], FileContents[2], FileContents[3] };
+                    byte[] u_timestamp_bytes = new byte[4] { FileContents[4], FileContents[5], FileContents[6], FileContents[7] };
+                    int timestamp_seconds = BitConverter.ToInt32(timestamp_bytes, 0);
+                    int u_timestamp_seconds = BitConverter.ToInt32(u_timestamp_bytes, 0);
+
+                    string timestamp = timestamp_seconds + "." + u_timestamp_seconds;
+                    StartTimeStamp = decimal.Parse(timestamp);
+
+                }
+
                 bool filter_this_packet = false;
                 string sip_type = "";
                 string seq_method = "";
 
                 // Packet type
                 int type_index = 0x2A + offset;
+
+                if (type_index > FileContents.Length) break;
 
                 byte[] type_bytes = new byte[20];
                 for (int i = 0; i < type_bytes.Length; i++)
@@ -87,10 +101,27 @@ namespace SharkEdit
                     seq_method = packet_ascii.Substring(sequence_pos, packet_length > sequence_pos + 20 ? 20 : packet_length - sequence_pos);
                 }
 
-                string full_ship_method = GetSIPFromString(sip_type);
+                string type_piece = packet_ascii.Substring(packet_length >= 66 ? 66 - (first_packet ? 8 : 0) : 0, packet_length > 66 + 40 ? 40 : packet_length - 66 > 0 ? packet_length - 66 : packet_length);
+
+                string full_sip_method = GetSIPFromString(sip_type);
+                if (full_sip_method.Contains("err:"))
+                {
+                    if (!GetSIPFromString(type_piece).Contains("err:"))
+                    {
+                        full_sip_method = GetSIPFromString(type_piece);
+                    }
+                    else
+                    {
+                        int attemp_index = packet_ascii.IndexOf("SIP/2.0") - 6;
+                        if (attemp_index > -1)
+                        {
+                            type_piece = packet_ascii.Substring(attemp_index, packet_length - attemp_index > 40 ? 40 : packet_length - attemp_index);
+                            full_sip_method = GetSIPFromString(type_piece);
+                        }
+                    }
+                }
 
                 // Type of packet
-                string type_piece = packet_ascii.Substring(66 - (first_packet ? 8 : 0), packet_length > 66 + 20 ? 20 : packet_length - 66);
                 first_packet = false;
                 bool is_sip = !GetSIPFromString(type_piece).Contains("err:") || !(GetSIPFromString(sip_type).Contains("err:"));
                 bool rtp = packet_length == 214 || packet_length == 218 || packet_length == 60;
@@ -99,15 +130,23 @@ namespace SharkEdit
                 if (!is_sip && !rtp) filter_this_packet = true;
 
                 // If register packet then filter
-                if (filter_out_registers && full_ship_method == "Register") filter_this_packet = true;
-                if (filter_out_notifys && full_ship_method == "Notify") filter_this_packet = true;
+                if (filter_out_non_essentials && full_sip_method == "Register") filter_this_packet = true;
+                if (filter_out_non_essentials && full_sip_method == "Notify") filter_this_packet = true;
+                if (filter_out_non_essentials && full_sip_method == "Subscribe") filter_this_packet = true;
+                if (filter_out_non_essentials && full_sip_method == "Not Acceptable") filter_this_packet = true;
+                if (filter_out_non_essentials && full_sip_method == "Accepted") filter_this_packet = true;
+                if (filter_out_non_essentials && full_sip_method == "Proxy Auth.") filter_this_packet = true;
+                if (filter_out_non_essentials && full_sip_method == "Info") filter_this_packet = true;
 
                 // If 200 OK's then filter if not seq to an invite
-                if (filter_out_200_oks && full_ship_method == "200 OK" && (!seq_method.Contains("INVITE") && !seq_method.Contains("BYE") && !seq_method.Contains("CANCEL"))) filter_this_packet = true;
-                if (filter_out_options && full_ship_method == "Options" && (!seq_method.Contains("INVITE") && !seq_method.Contains("BYE") && !seq_method.Contains("CANCEL"))) filter_this_packet = true;
+                if (filter_out_non_essentials && full_sip_method == "200 OK" && (!seq_method.Contains("INV") && !seq_method.Contains("BYE") && !seq_method.Contains("CANC"))) filter_this_packet = true;
+                if (filter_out_options && full_sip_method == "Options" && (!seq_method.Contains("INV") && !seq_method.Contains("BYE") && !seq_method.Contains("CANC"))) filter_this_packet = true;
+                if (filter_out_non_essentials && full_sip_method == "Acknowledgment" && (!seq_method.Contains("INV") && !seq_method.Contains("BYE") && !seq_method.Contains("CANC"))) filter_this_packet = true;
 
                 // Check RTP filtering
                 if (rtp && filter_out_all_RTP) filter_this_packet = true;
+
+                if (seq_method.Contains("INV") || seq_method.Contains("BYE") || seq_method.Contains("CANC")) filter_this_packet = false;
                 
                 if (!filter_this_packet)
                 {
@@ -161,7 +200,7 @@ namespace SharkEdit
                         }
 
                         Packets.Add(full_packet);
-                        SIPTypes.Add(rtp ? "RTP" : GetSIPFromString(sip_type));
+                        SIPTypes.Add(rtp ? "RTP" : full_sip_method);
 
                     }
                 }                
@@ -174,6 +213,7 @@ namespace SharkEdit
 
                 // Update progress bar
                 progress += packet_length;
+                packet++;
                 UpdateProgressBar(progress);
 
                 // Break out when finished
@@ -212,7 +252,7 @@ namespace SharkEdit
         }
 
         // Get both timestamps
-        public int[] GetPacketTimestamp(int packet_index)
+        public string GetPacketTimestamp(int packet_index)
         {
 
             // Create temp packet to read timestamp from
@@ -224,7 +264,10 @@ namespace SharkEdit
             int timestamp_seconds = BitConverter.ToInt32(timestamp_bytes, 0);
             int u_timestamp_seconds = BitConverter.ToInt32(u_timestamp_bytes, 0);
 
-            return new int[] { timestamp_seconds, u_timestamp_seconds };
+            string timestamp = timestamp_seconds + "." + u_timestamp_seconds;
+            decimal f_timestamp = decimal.Parse(timestamp);
+
+            return (f_timestamp - StartTimeStamp).ToString("0.000");
 
         }
 
@@ -250,6 +293,11 @@ namespace SharkEdit
 
             return true;
 
+        }
+
+        public void SetStartTime(decimal time)
+        {
+            StartTimeStamp = time;
         }
 
         // Export
@@ -299,7 +347,7 @@ namespace SharkEdit
         private string GetSIPFromString(string piece)
         {
             if (piece.Contains("REG")) return "Register";
-            if (piece.Contains("INVITE")) return "Invite";
+            if (piece.Contains("INV")) return "Invite";
             if (piece.Contains("100 T")) return "100 Trying";
             if (piece.Contains("180 R")) return "180 Ringing";
             if (piece.Contains("ACK")) return "Acknowledgment";
@@ -309,6 +357,13 @@ namespace SharkEdit
             if (piece.Contains("CANCEL")) return "Cancel";
             if (piece.Contains("NOTIFY")) return "Notify";
             if (piece.Contains("Unauthor")) return "401 Unauthorized";
+            if (piece.Contains("SUBS")) return "Subscribe";
+            if (piece.Contains("488 N")) return "Not Acceptable";
+            if (piece.Contains("202 A")) return "Accepted";
+            if (piece.Contains("PRA")) return "PRACK";
+            if (piece.Contains("487 R")) return "Request Cancelled";
+            if (piece.Contains("407 P")) return "Proxy Auth.";
+            if (piece.Contains("INFO")) return "Info";
             if (piece.Contains("SIP/2.0")) return "Unknown SIP";
             return "err:" + piece;
         }

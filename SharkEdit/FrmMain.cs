@@ -25,6 +25,7 @@ namespace SharkEdit
         private const int DGV_DISPLAY_TIMESTAMP = 1;
         private const int DGV_DISPLAY_LENGTH = 2;
         private const int DGV_DISPLAY_SIP_TYPE = 3;
+        private const int DGV_DISPLAY_RAW = 4;
 
 
         // Form start
@@ -32,6 +33,7 @@ namespace SharkEdit
         {
             // Load components
             InitializeComponent();
+            Text = "Shark Byte " + ProductVersion.ToString();
         }
 
         // Click of load file button
@@ -45,6 +47,7 @@ namespace SharkEdit
                 if (MessageBox.Show("Export Existing File Created?", "Export File?", MessageBoxButtons.YesNo) == DialogResult.Yes)
                 {
                     btnExport_Click(new object(), new EventArgs());
+                    return;
                 }
             }
 
@@ -62,7 +65,6 @@ namespace SharkEdit
 
         private void LoadFile(string filename)
         {
-            Text = "Shark Biting: " + filename;
             lbFilename.Text = filename;
 
             // Process File
@@ -103,7 +105,7 @@ namespace SharkEdit
             WireSharkPackets.UpdateProgressBar += new WireSharkFile.UpdateProgressBarDelegate(UpdateProgressBar);
 
             // Get all lengths and timestamps (pre-process)
-            WireSharkPackets.Process(ckbREG.Checked, ckbOK.Checked, ckbOPT.Checked, ckbNOT.Checked, ckbRTP.Checked);
+            WireSharkPackets.Process(ckbNonEssential.Checked, ckbOPT.Checked, ckbRTP.Checked);
 
             // Update GUI
             lbPackets.Text = "Displaying...";
@@ -137,13 +139,14 @@ namespace SharkEdit
                 dgvDisplay.Rows.Add();
                 dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_COUNT].Value = i + 1;
 
-                int[] timestamps = WireSharkPackets.GetPacketTimestamp(i);
-                dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_TIMESTAMP].Value = timestamps[0] + "." + timestamps[1];
+                dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_TIMESTAMP].Value = WireSharkPackets.GetPacketTimestamp(i);
 
                 int packet_length = WireSharkPackets.GetPacketLength(i);
                 dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_LENGTH].Value = packet_length;
 
                 dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_SIP_TYPE].Value = WireSharkPackets.GetSIPString(i);
+
+                dgvDisplay.Rows[dgvDisplay.Rows.Count - 1].Cells[DGV_DISPLAY_RAW].Value = Encoding.ASCII.GetString(WireSharkPackets.GetPacket(i));
 
                 if (pbLoading.Value < pbLoading.Maximum) pbLoading.Value++;
 
@@ -158,6 +161,7 @@ namespace SharkEdit
             if (WireSharkPackets == null) return;
 
             // Correct for wireshark format
+            WireSharkPackets.SetStartTime(0);
             milliseconds_between_sip = milliseconds_between_sip * 1000;            
 
             lbPackets.Text = "Altering times...";
@@ -183,8 +187,7 @@ namespace SharkEdit
                 int increment_by = milliseconds_between_sip;
                 bool is_rtp = WireSharkPackets.IsRTP(i);
 
-                double r = milliseconds_between_sip / rtp_divider;
-                if (is_rtp) increment_by = (int)Math.Round(r);
+                if (is_rtp) increment_by = (int)ndMSBR.Value * 1000;
 
                 // Increase next timestamp
                 u_timestamp += increment_by;
@@ -214,15 +217,14 @@ namespace SharkEdit
             {
                 if (WireSharkPackets.WriteFile(save_dialog.FileName))
                 {
-                    MessageBox.Show("Exported.");
+                    pbLoading.Value = 0;
+                    MessageBox.Show("Export Complete.");
                     btnExport.Enabled = false;
                     btnHalfSecondFix.Enabled = false;
                     TimesAltered = false;
 
-                    ckbNOT.Enabled = true;
-                    ckbOK.Enabled = true;
                     ckbOPT.Enabled = true;
-                    ckbREG.Enabled = true;
+                    ckbNonEssential.Enabled = true;
                     ckbRTP.Enabled = true;
 
                 }
@@ -259,10 +261,8 @@ namespace SharkEdit
             TimesAltered = true;
             btnExport.Enabled = true;
 
-            ckbNOT.Enabled = false;
-            ckbOK.Enabled = false;
             ckbOPT.Enabled = false;
-            ckbREG.Enabled = false;
+            ckbNonEssential.Enabled = false;
             ckbRTP.Enabled = false;
         }
 
@@ -271,6 +271,32 @@ namespace SharkEdit
             ndMSBR.Enabled = !ckbRTP.Checked;
             lbRTP.Enabled = !ckbRTP.Checked;
 
+        }
+
+        private void label2_Click(object sender, EventArgs e)
+        {
+            string list = Environment.NewLine +
+                " -- Register " + Environment.NewLine +
+                //" -- Invite " + Environment.NewLine +
+                //" -- 100 Trying " + Environment.NewLine +
+                //" -- 180 Ringing " + Environment.NewLine +
+                " -- Acknowledgment " + Environment.NewLine +
+                //" -- Bye " + Environment.NewLine +
+                " -- 200 OK " + Environment.NewLine +
+                //" -- Options " + Environment.NewLine +
+                //" -- Cancel " + Environment.NewLine +
+                " -- Notify " + Environment.NewLine +
+                " -- 401 Unauthorized " + Environment.NewLine +
+                " -- Subscribe " + Environment.NewLine +
+                " -- Not Acceptable " + Environment.NewLine +
+                " -- Accepted " + Environment.NewLine +
+                " -- PRACK " + Environment.NewLine +
+                " -- Request Cancelled " + Environment.NewLine +
+                //" -- Proxy Auth. " + Environment.NewLine +
+                " -- Info ";
+
+            FrmFiltering fFiltering = new FrmFiltering(list);
+            fFiltering.ShowDialog();
         }
     }
 }
